@@ -2,7 +2,8 @@
 
 (import '[org.apache.kafka.clients.admin
           Config ConfigEntry DescribeClusterResult NewTopic
-          TopicDescription])
+          TopicDescription ConsumerGroupDescription MemberDescription
+          MemberAssignment])
 
 (set! *warn-on-reflection* true)
 
@@ -44,6 +45,25 @@
   [^TopicDescription td]
   {:is-internal? (.isInternal td)
    :partition-info (map datafy (.partitions td))})
+
+;;; ConsumerGroupDescription
+
+(defn->data ConsumerGroupDescription->data
+  [^ConsumerGroupDescription cd]
+  {:is-simple-consumer-group (.isSimpleConsumerGroup cd)
+   :members (map datafy (.members cd))})
+
+;;; MemberDescription
+
+(defn->data MemberDescription->data
+  [^MemberDescription md]
+  {:assignment (datafy (.assignment md))})
+
+;; MemberAssignment
+
+(defn->data MemberAssignment->data
+  [^MemberAssignment ma]
+  {:topic-partitions (map datafy (.topicPartitions ma))})
 
 ;;; NewTopic
 

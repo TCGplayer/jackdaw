@@ -11,7 +11,7 @@
    [manifold.deferred :as d])
   (:import [java.util Collection Properties]
            [org.apache.kafka.clients.admin AdminClient
-            DescribeTopicsOptions DescribeClusterOptions DescribeConfigsOptions]))
+            DescribeTopicsOptions DescribeClusterOptions DescribeConfigsOptions DescribeConsumerGroupsOptions ConsumerGroupListing ConsumerGroupDescription]))
 
 (set! *warn-on-reflection* true)
 
@@ -22,6 +22,8 @@
   (describe-topics* [this topics])
   (describe-configs* [this configs])
   (describe-cluster* [this])
+  (describe-consumer-groups* [this group-ids])
+  (list-consumer-groups* [this])
   (list-topics* [this]))
 
 (def client-impl
@@ -29,8 +31,8 @@
                     (d/future
                       @(.all (.alterConfigs ^AdminClient this topics))))
    :create-topics* (fn [this topics]
-                    (d/future
-                      @(.all (.createTopics ^AdminClient this ^Collection topics))))
+                     (d/future
+                       @(.all (.createTopics ^AdminClient this ^Collection topics))))
    :delete-topics*  (fn [this topics]
                       (d/future
                         @(.all (.deleteTopics ^AdminClient this ^Collection topics))))
@@ -43,6 +45,12 @@
    :describe-cluster* (fn [this]
                         (d/future
                           (jd/datafy (.describeCluster ^AdminClient this (DescribeClusterOptions.)))))
+   :describe-consumer-groups* (fn [this group-ids]
+                                (d/future
+                                  @(.all (.describeConsumerGroups ^AdminClient this group-ids (DescribeConsumerGroupsOptions.)))))
+   :list-consumer-groups* (fn [this]
+                            (d/future
+                              @(.all (.listConsumerGroups ^AdminClient this))))
    :list-topics* (fn [this]
                    (d/future
                      @(.names (.listTopics ^AdminClient this))))})
@@ -64,6 +72,17 @@
   Return `true` if and only if given an `AdminClient` instance."
   [x]
   (instance? AdminClient x))
+
+(defn list-consumer-groups
+  "Given an `AdminClient`, return a seq of consumer groups, being the
+  consumer groups on the cluster."
+  [^AdminClient client]
+  {:pre [(client? client)]}
+  (->> @(list-consumer-groups* client)
+       ;; We should allow the caller to decide whether they want
+       ;; the result to be sorted or not?
+       (map #(.groupId ^ConsumerGroupListing %))
+       sort))
 
 (defn list-topics
   "Given an `AdminClient`, return a seq of topic records, being the
@@ -145,6 +164,25 @@
        (reduce-kv (fn [m k v]
                     (assoc m (jd/datafy k) (jd/datafy v)))
                   {})))
+
+(defn describe-consumer-groups
+  "Given an `AdminClient` and an optional collection of topic
+  descriptors, return a map from topic names to topic
+  descriptions.
+
+  If no topics are provided, describes all topics.
+
+  Note that the topic description does NOT include the topic's
+  configuration.See `#'describe-topic-config` for that capability."
+  ([^AdminClient client]
+   {:pre [(client? client)]}
+   (describe-consumer-groups client (list-consumer-groups client)))
+  ([^AdminClient client group-ids]
+   {:pre [(client? client)
+          (sequential? group-ids)]}
+   (->> @(describe-consumer-groups* client group-ids)
+        (map (fn [[k v]] [k (jd/datafy v)]))
+        (into {}))))
 
 (defn topics-ready?
   "Given an `AdminClient` and a sequence topic descriptors, return
@@ -228,3 +266,10 @@
   {:pre [(client? client)]}
   (-> @(describe-configs* client [(jd/->broker-resource (str broker-id))])
       vals first jd/datafy))
+
+(comment (def client (AdminClient/create ^Properties (jd/map->Properties {"bootstrap.servers" "b-2.data-services-prd.6ktv70.c4.kafka.us-east-1.amazonaws.com:9092"})))
+
+         (def consumer-group-result (describe-consumer-groups client))
+
+         (map #(spit "topics.txt" (str % "\n") :append true) (clojure.set/difference (set (map :topic-name (list-topics client))) (set (flatten (map (fn [{:keys [members]}] (map (fn [{{:keys [topic-partitions]} :assignment}] (map :topic-name topic-partitions)) members)) (vals consumer-group-result))))))
+         )
