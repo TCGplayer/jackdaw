@@ -281,10 +281,10 @@
   [^Consumer consumer timestamp topics]
   (let [topic-partitions (->> (mapcat #(partitions-for consumer %) topics)
                               (map #(select-keys % [:topic-name :partition])))
+        end-offsets      (end-offsets consumer topic-partitions)
         ts-offsets       (offsets-for-times consumer
                                          (zipmap topic-partitions
                                                  (repeat (count topic-partitions) timestamp)))
-        end-offsets      (end-offsets consumer topic-partitions)
         offsets          (reduce-kv (fn [m k v]
                                       (assoc m k {:ts-offset v
                                                   :end-offset (get end-offsets k)}))
