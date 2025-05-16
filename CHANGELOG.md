@@ -3,7 +3,7 @@
 ### Unreleased
 
 ### [0.9.13] - [2025-05-16]
-- partitions-for checks against the interface to allow for better mocking
+- Fix partitions-for checking against concrete class instead of interface. Prevents mocked Consumer and Producer instances from working during testing.
 
 ### [0.9.12] - [2023-12-05]
 - Support for Foreign Key joins [#365](https://github.com/FundingCircle/jackdaw/pull/365) (Issue [#364])
