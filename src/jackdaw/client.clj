@@ -281,6 +281,7 @@
   [^Consumer consumer timestamp topics]
   (let [topic-partitions (->> (mapcat #(partitions-for consumer %) topics)
                               (map #(select-keys % [:topic-name :partition])))
+        end-offsets      (end-offsets consumer topic-partitions)
         ts-offsets       (offsets-for-times consumer
                                             (zipmap topic-partitions
                                                     (repeat (count topic-partitions) timestamp)))
@@ -293,7 +294,7 @@
              {:keys [^OffsetAndTimestamp ts-offset end-offset]}] offsets]
       (let [offset (or (when ts-offset
                          (.offset ts-offset))
-                       (inc end-offset))]
+                       end-offset)]
         (log/infof "Setting starting offset (topic=%s, partition=%s): %s"
                    (.topic topic-partition)
                    (.partition topic-partition)

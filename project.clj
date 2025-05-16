@@ -1,6 +1,8 @@
 (defproject fundingcircle/jackdaw "_"
   :description "A Clojure library for the Apache Kafka distributed streaming platform."
 
+  :license {:name "BSD 3-clause"  :url "http://opensource.org/licenses/BSD-3-Clause"}
+           
   :scm {:name "git" :url "https://github.com/fundingcircle/jackdaw"}
 
   :url "https://github.com/FundingCircle/jackdaw/"
@@ -8,7 +10,7 @@
   :repositories [["confluent" {:url "https://packages.confluent.io/maven/"}]
                  ["mulesoft" {:url "https://repository.mulesoft.org/nexus/content/repositories/public/"}]]
 
-  :dependencies [[aleph "0.6.1"]
+  :dependencies [[manifold/manifold "0.4.0"]
                  [danlentz/clj-uuid "0.1.9"
                   :exclusions [primitive-math]]
 
@@ -33,12 +35,13 @@
 
   :aliases {"kaocha" ["run" "-m" "kaocha.runner"]}
   :aot [jackdaw.serdes.edn2 jackdaw.serdes.fressian jackdaw.serdes.fn-impl]
-  :plugins [[me.arrdem/lein-git-version "2.0.8"]]
+  :plugins [[me.arrdem/lein-git-version "2.0.8"]
+            [com.github.clj-kondo/lein-clj-kondo "0.2.5"]]
 
   :git-version
   {:status-to-version
-   (fn [{:keys [tag version branch ahead ahead? dirty?] :as git}]
-     (if (and tag (not ahead?) (not dirty?))
+   (fn [{:keys [tag branch ahead? dirty?] :as git}]
+     (if (and tag (not ahead?) (not dirty?) (= "master" branch))
        tag
        (let [[_ prefix patch] (re-find #"(\d+\.\d+)\.(\d+)" tag)
              patch            (Long/parseLong patch)
@@ -73,6 +76,7 @@
               :resource-paths ["test/resources"]
               :injections [(require 'io.aviso.logging.setup)]
               :dependencies [[io.aviso/logging "1.0"]
+                             [aleph/aleph "0.6.1"]
                              [org.apache.kafka/kafka-streams-test-utils "3.3.2"]
                              [org.apache.kafka/kafka-clients "3.3.2" :classifier "test"]
                              [org.clojure/test.check "1.1.1"]
